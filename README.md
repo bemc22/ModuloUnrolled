@@ -45,3 +45,18 @@ Test the reconstruction pipeline on a provided sample input (`example.npy`) and 
 ```bash
 python demo.py
 ```
+
+## How to cite
+If this code is useful for your research and you use it in an academic work, please consider citing this paper as
+
+
+
+```bib
+@article{monroy2026deep,
+  title={Deep Lightweight Unrolled Network for High Dynamic Range Modulo Imaging},
+  author={Monroy, Brayan and Bacca, Jorge},
+  journal={IEEE Transactions on Computational Imaging},
+  year={2026},
+  publisher={IEEE}
+}
+```
