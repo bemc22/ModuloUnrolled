@@ -1,5 +1,6 @@
 # Deep Lightweight Unrolled Network for High Dynamic Range Modulo Imaging
----
+[![arXiv](https://img.shields.io/badge/arXiv-2601.12526-b31b1b.svg?style=plastic)](https://arxiv.org/abs/2601.12526)
+
 
 ## 📌 Overview
 
@@ -7,7 +8,6 @@
 * **Formulation**: It leverages an unrolled ADMM scheme representing a Plug-and-Play (PnP) framework. 
 * **Denoiser Prior**: Relies on a deep ResUNet block embedded inside the optimization iterations to handle the non-convex proximal mappings of modulo reconstruction.
 
----
 
 ## 📂 Repository Structure
 
@@ -18,7 +18,7 @@
 * `libs/` — Under-the-hood modules (e.g., U-Net architectures, dataset loaders, ADMM/PnP dynamics).
 * `ckpts/` — Default directory storing pre-trained weights (`.pth`).
 
----
+
 
 ## ⚙️ Workflow & Training Pipeline
 
@@ -37,7 +37,7 @@ python train_unrolled.py
 ```
 This stage incorporates **equivariant regularization** (invariant to intensity changes/saturation variations) to enhance generalizability.
 
----
+
 
 ## 🚀 Running the Demo
 
