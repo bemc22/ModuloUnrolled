@@ -13,7 +13,7 @@ import cv2
 from libs.dataloader import Modulo, ModuloDataset
 from libs.pnp import Unrolled, deep_denoiser
 from libs.utils import AverageMeter
-from models.network_unet import UNetRes as net
+from libs.unet import UNetRes as net
 
 from config import MODEL_SIZE
 from config import model_config
@@ -44,6 +44,7 @@ LEARNING_RATE = 1e-6
 
 GAMMA = 1.01
 EPSILON = 1e-5
+equivariant_reg = True
 
 
 
@@ -68,8 +69,6 @@ def test(test_loader, model):
     loss_record = AverageMeter()
 
     model.eval()
-
-    tone_mapping = DifferentiableToneMapping(exposure=1.0, factor=0.2, learnable=False).to(DEVICE)
 
     plot = True
 
@@ -108,33 +107,6 @@ def test(test_loader, model):
 
 from torch import nn
 
-class DifferentiableToneMapping(nn.Module):
-    def __init__(self, exposure=1.0, factor=0.2, learnable=False):
-        super().__init__()
-        if learnable:
-            self.exposure = nn.Parameter(torch.tensor(exposure))
-            self.factor = nn.Parameter(torch.tensor(factor))
-        else:
-            self.register_buffer('exposure', torch.tensor(exposure))
-            self.register_buffer('factor', torch.tensor(factor))
-        
-    def forward(self, x):
-        # Apply exposure adjustment
-        x = x * self.exposure
-        
-        # Calculate luminance (ITU-R BT.709 coefficients)
-        luminance = 0.2126 * x[:, 0:1, :, :] + 0.7152 * x[:, 1:2, :, :] + 0.0722 * x[:, 2:3, :, :]
-        
-        # Apply tone-mapping curve to luminance
-        tonemapped_lum = luminance / (luminance + self.factor)
-        
-        # Calculate scaling factor while avoiding division by zero
-        scale = tonemapped_lum / (luminance + 1e-6)
-        scale = scale.detach()  # Detach to avoid gradients through the scaling factor
-        
-        # Apply scale to each color channel
-        return x * scale
-    
 
 def train_one_epoch(
     epoch, train_loader, test_loader, model, optimizer, tq=None, scaler=None
@@ -152,9 +124,6 @@ def train_one_epoch(
     loss_record = AverageMeter()
 
     model.train()
-
-    tone_mapping1 = DifferentiableToneMapping(exposure=1.0, factor=0.2, learnable=False).to(DEVICE)
-    tone_mapping2 = DifferentiableToneMapping(exposure=1.0, factor=0.01, learnable=False).to(DEVICE)
 
     for i, batch in enumerate(train_loader):
 
@@ -177,27 +146,23 @@ def train_one_epoch(
             loss =  F.mse_loss(x, x_hat)
 
             # apply equivariant regularization
-            # loss_eq = 0
-            # for j in range(n_trans):
 
-            #     rand_sat = torch.rand(1).item() * sat_factor * 2 - sat_factor
-            #     x_sat = x * (1 + rand_sat)
-            #     x_sat = x_sat.detach()  # Detach to avoid gradients through the saturation adjustment
+            if equivariant_reg:
+                loss_eq = 0
+                for j in range(n_trans):
 
-            #     std_broad = std.view(-1, 1, 1, 1).expand_as(x_sat)
-            #     noise = torch.randn_like(x_sat) * (std_broad / 255.0)
-            #     y_sat = unlimited(x_sat + noise, 1.0)
+                    rand_sat = torch.rand(1).item() * sat_factor * 2 - sat_factor
+                    x_sat = x * (1 + rand_sat)
+                    x_sat = x_sat.detach()  # Detach to avoid gradients through the saturation adjustment
 
-            #     x_est = model(y_sat, std)
-            #     loss_eq = F.mse_loss(x_est, x_hat)
-            #     scaler.scale(0.01 * loss_eq * (1/n_trans)).backward(retain_graph=True)
-            # apply sharpening regularization
-            max_val = x.max(dim=0, keepdim=True)[0]
-            x_sharp = adjust_sharpness(x / max_val, sharpness_factor=2.0) * max_val
-            x_sharp = x_sharp.detach()
+                    std_broad = std.view(-1, 1, 1, 1).expand_as(x_sat)
+                    noise = torch.randn_like(x_sat) * (std_broad / 255.0)
+                    y_sat = unlimited(x_sat + noise, 1.0)
 
-            loss_sharp = F.mse_loss(x_sharp, x_hat)
-            scaler.scale(0.1 * loss_sharp).backward(retain_graph=True)
+                    x_est = model(y_sat, std)
+                    loss_eq = F.mse_loss(x_est, x_hat)
+                    scaler.scale(0.01 * loss_eq * (1/n_trans)).backward(retain_graph=True)
+
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -260,7 +225,6 @@ def main():
         [
             transforms.ToTensor(),
             transforms.Grayscale(num_output_channels=n_channels),
-            # transforms.GaussianBlur(BLUR_KERNEL_SIZE, BLUR_SIGMA),  
             Modulo(bitdepth, std=0),
         ]
     )
@@ -304,17 +268,6 @@ def main():
         torch.load(os.path.join("checkpoints", save_name) ) , strict=True
     )
 
-    STD_LOAD = (0, 80)
-
-    # model_name =   f"unrolled_{MODEL_SIZE}_supervised.pth"
-    # model_pool = "checkpoints"
-    # model_path = os.path.join(model_pool, model_name)
-    # model_unrolled.load_state_dict(torch.load(model_path), strict=True)
-
-    # core_denoiser_save = f"denoiser_unrolled_{MODEL_SIZE}_rgb_no_blur.pth"
-    # torch.save(model_unrolled.model, os.path.join("checkpoints", "backup", core_denoiser_save))
-    
-    # model_unrolled.freeze_model()
     model_unrolled = model_unrolled.to(DEVICE)
 
     # preliminar test

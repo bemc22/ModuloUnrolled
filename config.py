@@ -1,5 +1,5 @@
 # variables
-MODEL_SIZE = "small"
+MODEL_SIZE = "medium"
 
 # definitions
 n_channels = 3
@@ -45,10 +45,10 @@ large_model_config = dict(
 )
 
 model_pool = {
-    "tiny": tiny_model_config,
-    "small": small_model_config,
-    "medium": medium_model_config,
-    "large": large_model_config,
+    "small": tiny_model_config,
+    "medium": small_model_config,
+    "large": medium_model_config,
+    "baseline": large_model_config,
 }
 
 

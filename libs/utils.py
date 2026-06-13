@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import numpy as np
 import cv2
 
@@ -110,3 +111,34 @@ class AverageMeter(object):
 
     def __repr__(self):
         return "{:.3f} ({:.3f})".format(self.val, self.avg)
+
+
+
+
+
+class ToneMapping(nn.Module):
+    def __init__(self, exposure=1.0, factor=0.2,):
+        super().__init__()
+
+        self.register_buffer("exposure", torch.tensor(exposure))
+        self.register_buffer("factor", torch.tensor(factor))
+
+    def forward(self, x):
+        # Apply exposure adjustment
+        x = x * self.exposure
+
+        # Calculate luminance (ITU-R BT.709 coefficients)
+        luminance = (
+              0.2126 * x[:, 0:1, :, :]
+            + 0.7152 * x[:, 1:2, :, :]
+            + 0.0722 * x[:, 2:3, :, :]
+        )
+
+        # Apply tone-mapping curve to luminance
+        tonemapped_lum = luminance / (luminance + self.factor)
+
+        # Calculate scaling factor while avoiding division by zero
+        scale = tonemapped_lum / (luminance + 1e-6)
+
+        # Apply scale to each color channel
+        return x * scale
