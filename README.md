@@ -1,6 +1,6 @@
 # Deep Lightweight Unrolled Network for High Dynamic Range Modulo Imaging
 [![arXiv](https://img.shields.io/badge/arXiv-2601.12526-b31b1b.svg?style=plastic)](https://arxiv.org/abs/2601.12526)
-
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bemc22/ModuloUnrolled/blob/main/demo.ipynb) 
 
 ## 📌 Overview
 
